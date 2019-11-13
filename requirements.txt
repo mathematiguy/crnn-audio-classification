@@ -1,0 +1,11 @@
+jupyterlab==1.0.4
+matplotlib==3.0.3
+pandas==0.24.2
+ipython==7.9.0
+numpy==1.16.4
+SoundFile
+tensorboardX
+tensorboard
+tensorflow
+git+https://github.com/ksanjeevan/torchparse.git
+opencv-python==4.1.1.26
