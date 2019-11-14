@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-import argparse, json, os
+import argparse, json, os, logging
+from pprint import pprint
 import torch
 
 from utils import Logger
@@ -8,7 +9,6 @@ import data as data_module
 import net as net_module
 
 from train import Trainer
-
 from eval import ClassificationEvaluator, AudioInference
 
 
@@ -16,6 +16,7 @@ def _get_transform(config, name):
     tsf_name = config['transforms']['type']
     tsf_args = config['transforms']['args']
     return getattr(data_module, tsf_name)(name, tsf_args)
+
 
 def _get_model_att(checkpoint):
     m_name = checkpoint['config']['model']['type']
@@ -37,8 +38,7 @@ def eval_main(checkpoint):
     m_name, sd, classes = _get_model_att(checkpoint)
     model = getattr(net_module, m_name)(classes, config, state_dict=sd)
 
-    print(model)
-    
+    log.info(model)
     model.load_state_dict(checkpoint['state_dict'])
 
     num_classes = len(classes)
@@ -46,7 +46,7 @@ def eval_main(checkpoint):
 
     evaluation = ClassificationEvaluator(test_loader, model)
     ret = evaluation.evaluate(metrics)
-    print(ret)
+    log.info(ret)
     return ret
 
 
@@ -62,7 +62,7 @@ def infer_main(file_path, config, checkpoint):
     tsf = _get_transform(config, 'val')
     inference = AudioInference(model, transforms=tsf)
     label, conf = inference.infer(file_path)
-    print(label, conf)
+    log.info("label={}, conf={}".format(label, conf))
     inference.draw(file_path, label, conf)
 
 
@@ -73,7 +73,7 @@ def train_main(config, resume):
 
     t_transforms = _get_transform(config, 'train')
     v_transforms = _get_transform(config, 'val')
-    print(t_transforms)
+    log.info("t_transforms: {}".format(t_transforms))
 
     data_manager = getattr(data_module, config['data']['type'])(config['data'])
     classes = data_manager.classes
@@ -85,8 +85,7 @@ def train_main(config, resume):
     model = getattr(net_module, m_name)(classes, config=config)
     num_classes = len(classes)
 
-    print(model)
-
+    #log.info(model)
     loss = getattr(net_module, config['train']['loss'])
     metrics = getattr(net_module, config['metrics'])(num_classes)
 
@@ -96,14 +95,12 @@ def train_main(config, resume):
     opt_args = config['optimizer']['args']
     optimizer = getattr(torch.optim, opt_name)(trainable_params, **opt_args)
 
-
     lr_name = config['lr_scheduler']['type']
     lr_args = config['lr_scheduler']['args']
     if lr_name == 'None':
         lr_scheduler = None
     else:
         lr_scheduler = getattr(torch.optim.lr_scheduler, lr_name)(optimizer, **lr_args)
-
 
     trainer = Trainer(model, loss, metrics, optimizer, 
                       resume=resume,
@@ -132,45 +129,55 @@ def _test_loader(config):
     tsf = _get_transform(config, 'train')
     data_manager = getattr(data_module, config['data']['type'])(config['data'])
     loader = data_manager.get_loader('train', tsf)
-    print(tsf.transfs)
+    log.info(tsf.transfs)
     for batch in loader:
-        print(disp_batch([batch[0], batch[-1]]))
+        log.info(disp_batch([batch[0], batch[-1]]))
 
 
-
-
-if __name__ == '__main__':
+def main():
     argparser = argparse.ArgumentParser(description='PyTorch Template')
 
     argparser.add_argument('action', type=str,
                            help='what action to take (train, test, eval)')
-    
     argparser.add_argument('-c', '--config', default=None, type=str,
                            help='config file path (default: None)')
     argparser.add_argument('-r', '--resume', default=None, type=str,
                            help='path to latest checkpoint (default: None)')
     argparser.add_argument('--net_mode', default='init', type=str,
                            help='type of transfer learning to use')
-
     argparser.add_argument('--cfg', default=None, type=str,
                            help='nn layer config file')
+    argparser.add_argument('--log-level', default='INFO', type=str,
+                           help='Log level (default=INFO)')
 
     args = argparser.parse_args()
 
+    global log
+    log = logging.getLogger(__name__)
+
+    # Show the parsed args
+    log.debug(args)
+
+    logging.basicConfig(
+        level=args.log_level,
+        format='[%(asctime)s] | %(levelname)s | %(message)s',
+        datefmt='%H:%M:%S')
 
     # Resolve config vs. resume
     checkpoint = None
     if args.config:
-        config = json.load(open(args.config))
+        with open(args.config, "r") as f:
+            config  = json.load(f)
         config['net_mode'] = args.net_mode
         config['cfg'] = args.cfg
+        #log.info("Loaded config: {}".format(config))
     elif args.resume:
         checkpoint = torch.load(args.resume)
         config = checkpoint['config']
 
     else:
         raise AssertionError("Configuration file need to be specified. Add '-c config.json', for example.")
-    
+
     # Pick mode to run
     if args.action == 'train':
         train_main(config, args.resume)
@@ -184,3 +191,8 @@ if __name__ == '__main__':
     elif os.path.isfile(args.action):
         file_path = args.action
         infer_main(file_path, config, checkpoint)
+
+
+if __name__ == '__main__':
+    main()
+

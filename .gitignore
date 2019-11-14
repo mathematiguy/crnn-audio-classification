@@ -3,3 +3,5 @@ __pycache__
 UrbanSound8K
 **/.ipynb_checkpoints
 datasets/*
+**/.#*
+saved_cv/

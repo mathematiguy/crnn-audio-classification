@@ -3,9 +3,8 @@ matplotlib==3.0.3
 pandas==0.24.2
 ipython==7.9.0
 numpy==1.16.4
-SoundFile
-tensorboardX
-tensorboard
-tensorflow
 git+https://github.com/ksanjeevan/torchparse.git
 opencv-python==4.1.1.26
+SoundFile==0.10.2
+tensorboardX==1.9
+tensorflow==2.0.0

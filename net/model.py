@@ -1,3 +1,6 @@
+import logging
+from pprint import pprint
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -13,7 +16,7 @@ from torchparse import parse_cfg
 class AudioCRNN(BaseModel):
     def __init__(self, classes, config={}, state_dict=None):
         super(AudioCRNN, self).__init__(config)
-        
+
         in_chan = 2 if config['transforms']['args']['channels'] == 'stereo' else 1
 
         self.classes = classes
@@ -34,7 +37,7 @@ class AudioCRNN(BaseModel):
     def modify_lengths(self, lengths):
         def safe_param(elem):
             return elem if isinstance(elem, int) else elem[0]
-        
+
         for name, layer in self.net['convs'].named_children():
             #if name.startswith(('conv2d','maxpool2d')):
             if isinstance(layer, (nn.Conv2d, nn.MaxPool2d)):
@@ -43,7 +46,7 @@ class AudioCRNN(BaseModel):
 
         return torch.where(lengths > 0, lengths, torch.tensor(1, device=lengths.device))
 
-    def forward(self, batch):    
+    def forward(self, batch):
         # x-> (batch, time, channel)
         x, lengths, _ = batch # unpacking seqs, lengths and srs
 

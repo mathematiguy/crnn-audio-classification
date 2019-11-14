@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:1.3-cuda10.1-cudnn7-devel
+FROM pytorch/pytorch:1.0-cuda10.0-cudnn7-devel
 
 RUN apt-get update
 RUN apt-get install -y ffmpeg sox graphviz mpg123 git python3-pip

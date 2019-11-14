@@ -1,7 +1,7 @@
 DOCKER_REGISTRY := docker.dragonfly.co.nz
 IMAGE_NAME := $(shell basename `git rev-parse --show-toplevel` | tr '[:upper:]' '[:lower:]')
 IMAGE := $(DOCKER_REGISTRY)/$(IMAGE_NAME)
-RUN ?= docker run $(DOCKER_ARGS) --rm -v $$(pwd):/work -w /work -u $(UID):$(GID) $(IMAGE)
+RUN ?= docker run $(DOCKER_ARGS) --runtime=nvidia --rm --ipc=host -v $$(pwd):/work -w /work -u $(UID):$(GID) $(IMAGE)
 UID ?= $(shell id -u)
 GID ?= $(shell id -g)
 DOCKER_ARGS ?= 
@@ -20,6 +20,15 @@ UrbanSound8K: datasets/UrbanSound8K.tar.gz
 train:
 	$(RUN) python3 run.py train -c config.json --cfg crnn.cfg
 
+test:
+	$(RUN) python3 run.py UrbanSound8K/audio/fold10/100795-3-0-0.wav -r saved_cv/1114_031055/checkpoints/model_best.pth
+
+tensorboard: TENSORBOARD_PORT=6006
+tensorboard: DOCKER_ARGS=-p 6006:$(TENSORBOARD_PORT)
+tensorboard: TENSORBOARD_LOG_DIR=saved_cv/1114_031055/logs
+tensorboard:
+	$(RUN) tensorboard --logdir $(TENSORBOARD_LOG_DIR) --port $(TENSORBOARD_PORT)
+
 JUPYTER_PASSWORD ?= jupyter
 JUPYTER_PORT ?= 8888
 jupyter: UID=root
@@ -35,6 +44,9 @@ jupyter:
 			python3 -c \
 			"from IPython.lib import passwd; print(passwd('$(JUPYTER_PASSWORD)'))"\
 			)'
+
+clean:
+	rm -rf saved_cv/*
 
 docker:
 	docker build --tag $(IMAGE):$(GIT_TAG) .
