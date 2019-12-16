@@ -89,7 +89,7 @@ Run inference on an audio file:
 
 #### Training
 ```bash
-./run.py train -c config.json --cfg arch.cfg
+./run.py train -c config.json --cfg crnn.cfg
 ```
 
 ##### Augmentation
